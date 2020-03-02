@@ -41,6 +41,7 @@ const typeDefs = gql`
 		born: Int
 		id: ID!
 		bookCount: Int
+		books: [Book]
 	}
 	type Query {
 		bookCount: Int!
@@ -98,6 +99,7 @@ const resolvers = {
 			return result
 		},
 		allAuthors: async () => { 
+			console.log('Author.find')
 			return await Author.find({})
 		},
 		me: (root, args, context) => {
@@ -120,7 +122,7 @@ const resolvers = {
 			}
 			let author = await Author.findOne({ name: args.author })
 			if (!author) {
-				author = new Author({ name: args.author })
+				author = new Author({ name: args.author, books: [] })
 				try {
 					await author.save()
 				} catch (error) {
@@ -130,10 +132,12 @@ const resolvers = {
 				}
 				
 			} 
-			
 			const book = new Book({...args, author: author.id })
 			try {
 				await book.save()
+				if (!author.books) author.book = [book.id]
+				else author.books = author.books.concat(book.id)
+				await author.save()
 			} catch (error) {
 				throw new UserInputError(error.message, {
 					invalidArgs: args,
@@ -188,9 +192,8 @@ const resolvers = {
 	},
 	Author: {
 		bookCount: (root) => {
-			const authorsBooks = Book.find({ author: root.id })
-			console.log(authorsBooks)
-			return authorsBooks.countDocuments()
+			console.log('root', root)
+			return root.books.length
 		}
 	},
 }
